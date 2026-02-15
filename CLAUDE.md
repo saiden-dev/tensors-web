@@ -67,13 +67,17 @@ npm run preview
 
 ### Environment Variables
 
-`.env` for local development:
+**IMPORTANT**: Use `.env.development`, NOT `.env`!
+
+Vite includes `.env` in production builds, which would override the proxy URL.
+
+`.env.development` for local development:
 ```bash
 VITE_API_URL=https://tensors-api.saiden.dev
 VITE_API_KEY=<your-api-key>
 ```
 
-Production (Cloudflare Pages) uses the proxy, so no API key in frontend.
+Production builds (no .env file) default to proxy URL defined in `src/api/config.ts`.
 
 ## Deployment
 
@@ -174,6 +178,23 @@ models.value = Array.isArray(modelsRes) ? modelsRes : (modelsRes.items || [])
 1. Browser DevTools Network tab - is API returning data?
 2. Console errors?
 3. Response structure - check if parsing expects wrong format.
+
+### 405 Errors on CORS Preflight
+
+**Symptom**: Console shows "Preflight response is not successful. Status code: 405"
+
+**Cause**: Production is hitting `tensors-api.saiden.dev` directly instead of proxy. The direct API doesn't handle OPTIONS preflight requests.
+
+**Fix**:
+1. Ensure NO `.env` file exists (only `.env.development`)
+2. Check `src/api/config.ts` defaults to proxy URL
+3. Rebuild and redeploy
+
+**Verify build uses proxy**:
+```bash
+grep -oE 'https?://[^"]+saiden\.dev[^"]*' dist/assets/index-*.js | sort -u
+# Should show BOTH tensors-api (from package) AND tensors-proxy (from config)
+```
 
 ### Deployment Goes to Preview Instead of Production
 
