@@ -1,0 +1,10 @@
+name = "tensors-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "tensors-proxy.saiden.dev", custom_domain = true }
+]
+
+# The API key will be set as a secret:
+# wrangler secret put TENSORS_API_KEY

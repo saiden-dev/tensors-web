@@ -9,9 +9,11 @@ import {
   BASE_PATH,
 } from '@saiden/tensors'
 
-// Use the default API host (https://tensors-api.saiden.dev)
+// In production: use proxy (no API key needed, worker adds it)
+// In development: use direct API with key
 const config = new Configuration({
-  apiKey: 'MSNwQry7W1L3vXMkrPiDgd0ty4EADHO',
+  basePath: import.meta.env.VITE_API_URL || BASE_PATH,
+  apiKey: import.meta.env.VITE_API_KEY || undefined,
 })
 
 // Export configured API instances
