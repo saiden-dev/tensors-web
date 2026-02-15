@@ -73,4 +73,33 @@ onMounted(() => {
 html, body {
   overflow: hidden;
 }
+
+/* ComfyUI-inspired gradient background */
+.v-application {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%) !important;
+}
+
+/* Navigation drawer matches surface color */
+.v-navigation-drawer {
+  background: rgba(30, 30, 46, 0.95) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Active nav item styling */
+.v-list-item--active {
+  background: rgba(102, 126, 234, 0.15) !important;
+}
+.v-list-item--active .v-list-item__prepend .v-icon {
+  color: #667eea !important;
+}
+
+/* Card styling */
+.v-card, .v-sheet {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Muted text */
+.text-grey, .text-medium-emphasis {
+  color: #888 !important;
+}
 </style>
