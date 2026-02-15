@@ -18,7 +18,8 @@ Web UI for searching AI models on CivitAI/HuggingFace and generating images with
 │              tensors-api.saiden.dev (Cloudflare Tunnel)                 │
 │                      │                                                  │
 │                      ▼                                                  │
-│              junkpile:51200 (tsr serve - FastAPI)                       │
+│              junkpile:51200 / 192.168.0.170:51200 (tsr serve)            │
+│              ▲ THIS IS THE ACTUAL SERVER (same for all access methods)  │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 
@@ -32,7 +33,7 @@ Web UI for searching AI models on CivitAI/HuggingFace and generating images with
 │              tensors-api.saiden.dev (direct, with API key in .env)      │
 │                      │                                                  │
 │                      ▼                                                  │
-│              junkpile:51200 (via Cloudflare Tunnel)                     │
+│              junkpile:51200 (same server, via Cloudflare Tunnel)        │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -250,9 +251,13 @@ tensors-web/
 └── vite.config.ts         # Vite config
 ```
 
-## Junkpile Server
+## Junkpile Server (tensors API)
 
-The API server (`tsr serve`) runs on junkpile:
+The API server (`tsr serve` from the [tensors](https://github.com/saiden-dev/tensors) Python package) runs on junkpile.
+
+**`https://tensors-api.saiden.dev` = Cloudflare Tunnel → `junkpile:51200`**
+
+They are the SAME server. The tunnel just exposes it to the internet.
 
 ```bash
 # Check if API is running
