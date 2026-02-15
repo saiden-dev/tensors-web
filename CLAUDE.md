@@ -45,7 +45,8 @@ Web UI for searching AI models on CivitAI/HuggingFace and generating images with
 | **Production Proxy** | https://tensors-proxy.saiden.dev | Worker proxy (adds API key) |
 | **Production API** | https://tensors-api.saiden.dev | Cloudflare Tunnel to junkpile |
 | **Development** | http://localhost:5173 | Vite dev server |
-| **Junkpile Direct** | http://junkpile:51200 | LAN access (if configured) |
+| **Junkpile LAN** | http://192.168.0.170:51200 | Direct LAN access (no tunnel) |
+| **Junkpile localhost** | http://junkpile:51200 | Via SSH or on junkpile itself |
 
 ## Development
 
@@ -248,6 +249,32 @@ tensors-web/
 ├── .env.example           # Example env file
 └── vite.config.ts         # Vite config
 ```
+
+## Junkpile Server
+
+The API server (`tsr serve`) runs on junkpile:
+
+```bash
+# Check if API is running
+ssh chi@junkpile "curl -s http://localhost:51200/status"
+
+# Check what port is bound to
+ssh chi@junkpile "ss -tlnp | grep 51200"
+# Output: LISTEN 0 2048 0.0.0.0:51200 0.0.0.0:*  (bound to all interfaces)
+
+# Check tunnel status
+ssh chi@junkpile "systemctl status cloudflared"
+```
+
+**Network Info**:
+- LAN IP: `192.168.0.170`
+- API Port: `51200`
+- Bound to: `0.0.0.0` (all interfaces - accessible from LAN)
+
+**Access Methods**:
+1. **Via Tunnel** (internet): `https://tensors-api.saiden.dev`
+2. **Via LAN** (local network): `http://192.168.0.170:51200`
+3. **Via SSH**: `ssh chi@junkpile` then `curl localhost:51200`
 
 ## Related Projects
 
