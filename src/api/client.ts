@@ -1,36 +1,34 @@
+/**
+ * API Client - Wrapper around @saiden/tensors generated client
+ *
+ * Provides a simplified interface maintaining backwards compatibility
+ * while using the generated OpenAPI client under the hood.
+ */
+
+import {
+  civitaiApi,
+  databaseApi,
+  downloadApi,
+  galleryApi,
+  searchApi,
+} from './config'
 import type { Model, LoRA, GeneratedImage, GalleryImage, CivitaiModel } from '@/types'
 
-const BASE_URL = ''
+// Re-export types for convenience
+export type { Model, LoRA, GeneratedImage, GalleryImage, CivitaiModel }
 
-async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${url}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }))
-    throw new Error(error.error || response.statusText)
-  }
-  return response.json()
-}
-
+// ============================================================================
 // Models
+// ============================================================================
+
 export async function getModels(): Promise<{ models: Model[]; total: number }> {
-  return fetchJson('/api/models')
+  const result = await databaseApi.searchModelsApiDbModelsGet({ type: 'Checkpoint' }) as any
+  return { models: result.items || [], total: result.total || 0 }
 }
 
-export async function getActiveModel(): Promise<{ loaded: boolean; model: string | null }> {
-  return fetchJson('/api/models/active')
-}
-
-export async function switchModel(model: string): Promise<{ ok: boolean; old_model: string; new_model: string }> {
-  return fetchJson('/api/models/switch', {
-    method: 'POST',
-    body: JSON.stringify({ model }),
-  })
+export async function getLoras(): Promise<{ loras: LoRA[]; total: number }> {
+  const result = await databaseApi.searchModelsApiDbModelsGet({ type: 'LORA' }) as any
+  return { loras: result.items || [], total: result.total || 0 }
 }
 
 export interface ServerStatus {
@@ -42,19 +40,40 @@ export interface ServerStatus {
   port: string | null
 }
 
-export async function getServerStatus(): Promise<ServerStatus> {
-  return fetchJson('/api/models/status')
+export async function getActiveModel(): Promise<{ loaded: boolean; model: string | null }> {
+  // This endpoint may not be in the generated client - use raw fetch as fallback
+  const response = await fetch('/api/models/active')
+  if (!response.ok) throw new Error(response.statusText)
+  return response.json()
 }
 
-export async function getLoras(): Promise<{ loras: LoRA[]; total: number }> {
-  return fetchJson('/api/models/loras')
+export async function switchModel(model: string): Promise<{ ok: boolean; old_model: string; new_model: string }> {
+  // This endpoint may not be in the generated client - use raw fetch as fallback
+  const response = await fetch('/api/models/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+  if (!response.ok) throw new Error(response.statusText)
+  return response.json()
+}
+
+export async function getServerStatus(): Promise<ServerStatus> {
+  const response = await fetch('/api/models/status')
+  if (!response.ok) throw new Error(response.statusText)
+  return response.json()
 }
 
 export async function rebootComfyUI(): Promise<{ ok: boolean; message: string }> {
-  return fetchJson('/api/models/reboot', { method: 'POST' })
+  const response = await fetch('/api/models/reboot', { method: 'POST' })
+  if (!response.ok) throw new Error(response.statusText)
+  return response.json()
 }
 
+// ============================================================================
 // Generation
+// ============================================================================
+
 export interface LoraConfig {
   path: string
   multiplier: number
@@ -73,26 +92,40 @@ export interface GenerateParams {
 }
 
 export async function generate(params: GenerateParams): Promise<{ images: GeneratedImage[] }> {
-  return fetchJson('/api/generate', {
+  // Generation endpoint - use raw fetch
+  const response = await fetch('/api/generate', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }))
+    throw new Error(error.error || response.statusText)
+  }
+  return response.json()
 }
 
+// ============================================================================
 // Gallery
+// ============================================================================
+
 export async function getImages(limit = 100): Promise<{ images: GalleryImage[] }> {
-  return fetchJson(`/api/images?limit=${limit}`)
+  const result = await galleryApi.listImagesApiImagesGet({ limit }) as any
+  return { images: result.images || [] }
 }
 
 export async function deleteImage(id: string): Promise<void> {
-  await fetchJson(`/api/images/${id}`, { method: 'DELETE' })
+  await galleryApi.deleteImageApiImagesImageIdDelete({ imageId: id })
 }
 
 export function getImageUrl(id: string): string {
-  return `${BASE_URL}/api/images/${id}`
+  return `/api/images/${id}`
 }
 
+// ============================================================================
 // CivitAI Search
+// ============================================================================
+
 export interface SearchParams {
   query?: string
   types?: string
@@ -102,21 +135,24 @@ export interface SearchParams {
 }
 
 export async function searchCivitai(params: SearchParams): Promise<{ items: CivitaiModel[] }> {
-  const searchParams = new URLSearchParams()
-  if (params.query) searchParams.set('query', params.query)
-  if (params.types) searchParams.set('types', params.types)
-  if (params.baseModels) searchParams.set('baseModels', params.baseModels)
-  if (params.sort) searchParams.set('sort', params.sort)
-  if (params.limit) searchParams.set('limit', String(params.limit))
-
-  return fetchJson(`/api/civitai/search?${searchParams}`)
+  const result = await searchApi.searchModelsApiSearchGet({
+    query: params.query || undefined,
+    types: params.types || undefined,
+    baseModels: params.baseModels || undefined,
+    sort: params.sort as any,
+    limit: params.limit,
+  }) as any
+  return { items: result.items || [] }
 }
 
 export async function getCivitaiModel(id: number): Promise<CivitaiModel> {
-  return fetchJson(`/api/civitai/model/${id}`)
+  return civitaiApi.getModelApiCivitaiModelModelIdGet({ modelId: id })
 }
 
+// ============================================================================
 // Download
+// ============================================================================
+
 export interface DownloadResponse {
   download_id: string
   status: string
@@ -145,16 +181,20 @@ export interface DownloadStatus {
 }
 
 export async function downloadModel(modelId?: number, versionId?: number): Promise<DownloadResponse> {
-  return fetchJson('/api/download', {
-    method: 'POST',
-    body: JSON.stringify({ model_id: modelId, version_id: versionId }),
+  const result = await downloadApi.startDownloadApiDownloadPost({
+    downloadRequest: { modelId, versionId },
   })
+  return result as DownloadResponse
 }
 
 export async function getDownloadStatus(downloadId: string): Promise<DownloadStatus> {
-  return fetchJson(`/api/download/status/${downloadId}`)
+  const result = await downloadApi.getDownloadStatusApiDownloadStatusDownloadIdGet({
+    downloadId,
+  })
+  return result as DownloadStatus
 }
 
 export async function getActiveDownloads(): Promise<{ downloads: DownloadStatus[]; total: number }> {
-  return fetchJson('/api/download/active')
+  const result = await downloadApi.listActiveDownloadsApiDownloadActiveGet() as any
+  return { downloads: result.downloads || [], total: result.total || 0 }
 }
