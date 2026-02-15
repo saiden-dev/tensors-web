@@ -5,6 +5,7 @@ import GenerateView from '@/components/GenerateView.vue'
 import SearchView from '@/components/SearchView.vue'
 import GalleryView from '@/components/GalleryView.vue'
 import DownloadsPanel from '@/components/DownloadsPanel.vue'
+import LogoIcon from '@/assets/icon.svg'
 
 const store = useAppStore()
 
@@ -17,6 +18,9 @@ onMounted(() => {
 <template>
   <v-app>
     <v-navigation-drawer permanent rail>
+      <div class="logo-container">
+        <img :src="LogoIcon" alt="Tensors" class="logo" />
+      </div>
       <v-list density="compact" nav>
         <v-list-item
           :active="store.currentView === 'generate'"
@@ -101,5 +105,18 @@ html, body {
 /* Muted text */
 .text-grey, .text-medium-emphasis {
   color: #888 !important;
+}
+
+/* Logo in sidebar */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+}
+.logo {
+  width: 32px;
+  height: 32px;
 }
 </style>
