@@ -100,8 +100,9 @@ export const useAppStore = defineStore('app', () => {
         databaseApi.searchModelsApiDbModelsGet({ type: 'Checkpoint' }),
         databaseApi.searchModelsApiDbModelsGet({ type: 'LORA' }),
       ]) as any[]
-      models.value = modelsRes.items || []
-      loras.value = lorasRes.items || []
+      // API returns array directly, not { items: [...] }
+      models.value = Array.isArray(modelsRes) ? modelsRes : (modelsRes.items || [])
+      loras.value = Array.isArray(lorasRes) ? lorasRes : (lorasRes.items || [])
     } catch (error) {
       console.error('Failed to load models:', error)
     } finally {
