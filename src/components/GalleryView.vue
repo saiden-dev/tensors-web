@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import * as api from '@/api/client'
+import { galleryApi, getImageUrl } from '@/api/client'
 import type { GalleryImage } from '@/types'
 
 const images = ref<GalleryImage[]>([])
@@ -11,7 +11,7 @@ const showLightbox = ref(false)
 async function loadImages() {
   loading.value = true
   try {
-    const data = await api.getImages(100)
+    const data = await galleryApi.listImagesApiImagesGet({ limit: 100 }) as any
     images.value = data.images || []
   } catch (e) {
     console.error('Failed to load gallery:', e)
@@ -48,7 +48,7 @@ async function deleteImage(id: string) {
   if (!confirm('Delete this image?')) return
 
   try {
-    await api.deleteImage(id)
+    await galleryApi.deleteImageApiImagesImageIdDelete({ imageId: id })
     images.value = images.value.filter(img => img.id !== id)
     if (selectedImage.value === id) {
       closeLightbox()
@@ -87,7 +87,7 @@ onMounted(loadImages)
             @click="openLightbox(img.id)"
           >
             <v-img
-              :src="api.getImageUrl(img.id)"
+              :src="getImageUrl(img.id)"
               aspect-ratio="1"
               cover
               class="bg-grey-darken-3"
@@ -145,7 +145,7 @@ onMounted(loadImages)
 
           <v-img
             v-if="selectedImage"
-            :src="api.getImageUrl(selectedImage)"
+            :src="getImageUrl(selectedImage)"
             max-height="90vh"
             max-width="90vw"
             contain

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { CivitaiModel } from '@/types'
-import * as api from '@/api/client'
+import { civitaiApi } from '@/api/client'
 import { useAppStore } from '@/stores/app'
 
 const props = defineProps<{
@@ -37,7 +37,7 @@ async function openDetails() {
   showDialog.value = true
   loadingDetails.value = true
   try {
-    modelDetails.value = await api.getCivitaiModel(props.model.id)
+    modelDetails.value = await civitaiApi.getModelApiCivitaiModelModelIdGet({ modelId: props.model.id })
   } catch (e) {
     console.error('Failed to load model details:', e)
   } finally {

@@ -6,11 +6,12 @@ import {
   DownloadApi,
   GalleryApi,
   SearchApi,
+  BASE_PATH,
 } from '@saiden/tensors'
 
-// API configuration - uses relative paths for same-origin requests (proxied by Vite in dev)
+// Use the default API host (https://tensors-api.saiden.dev)
 const config = new Configuration({
-  basePath: '',
+  apiKey: 'MSNwQry7W1L3vXMkrPiDgd0ty4EADHO',
 })
 
 // Export configured API instances
@@ -21,5 +22,5 @@ export const downloadApi = new DownloadApi(config)
 export const galleryApi = new GalleryApi(config)
 export const searchApi = new SearchApi(config)
 
-// Re-export Configuration for custom use
-export { Configuration }
+// Re-export for custom use
+export { Configuration, BASE_PATH, config }

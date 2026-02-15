@@ -20,7 +20,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://junkpile:8081',
+        target: 'https://tensors-api.saiden.dev',
         changeOrigin: true,
       }
     }

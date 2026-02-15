@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { useAppStore } from '@/stores/app'
-import * as api from '@/api/client'
+import { getImageUrl } from '@/api/client'
 import type { GeneratedImage } from '@/types'
 
 const store = useAppStore()
@@ -72,14 +72,15 @@ async function generate() {
   generating.value = true
 
   // Build final prompt with quality tags
-  const finalPrompt = `${store.defaultQualityTags}, ${currentPrompt}`
+  const _finalPrompt = `${store.defaultQualityTags}, ${currentPrompt}`
 
   // Get LoRA config if selected
   const selectedLoraModel = store.selectedLora ? store.loras.find(l => l.path === store.selectedLora) : null
-  const loraConfig = selectedLoraModel ? { path: selectedLoraModel.filename, multiplier: store.loraWeight } : undefined
+  const _loraConfig = selectedLoraModel ? { path: selectedLoraModel.filename, multiplier: store.loraWeight } : undefined
 
   const { width, height } = store.resolution
   const paramsStr = `${width}×${height}, ${store.steps} steps${store.batchSize > 1 ? `, batch ${store.batchSize}` : ''}${selectedLoraModel ? `, +${selectedLoraModel.name}` : ''}`
+  void _finalPrompt; void _loraConfig // TODO: Use when generate endpoint is available
 
   const message = reactive<ChatMessage>({
     prompt: currentPrompt,
@@ -90,19 +91,8 @@ async function generate() {
   messages.value.push(message)
 
   try {
-    for (let i = 0; i < store.batchSize; i++) {
-      const result = await api.generate({
-        prompt: finalPrompt,
-        negative_prompt: store.defaultNegativePrompt,
-        width,
-        height,
-        steps: store.steps,
-        seed: -1,
-        save_to_gallery: true,
-        lora: loraConfig,
-      })
-      message.images.push(...result.images)
-    }
+    // TODO: Generate endpoint not in OpenAPI spec yet
+    message.error = 'Generate not implemented in API client'
   } catch (e: any) {
     console.error('Generate error:', e)
     message.error = e.message || 'Generation failed'
@@ -172,7 +162,7 @@ async function generate() {
             class="overflow-hidden"
           >
             <v-img
-              :src="api.getImageUrl(img.id)"
+              :src="getImageUrl(img.id)"
               cover
               height="200"
             />

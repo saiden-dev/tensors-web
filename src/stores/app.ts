@@ -1,8 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Model, LoRA, ResolutionPreset } from '@/types'
-import type { DownloadStatus } from '@/api/client'
-import * as api from '@/api/client'
+import { databaseApi, downloadApi } from '@/api/client'
+
+interface DownloadStatus {
+  id: string
+  version_id: number
+  status: 'queued' | 'downloading' | 'completed' | 'failed'
+  path: string
+  filename: string
+  model_name: string
+  version_name: string
+  downloaded?: number
+  total?: number
+  progress?: number
+  speed?: number
+  downloaded_str?: string
+  total_str?: string
+  speed_str?: string
+  error?: string
+}
 
 export const useAppStore = defineStore('app', () => {
   // Navigation
@@ -79,23 +96,12 @@ export const useAppStore = defineStore('app', () => {
   async function loadModels() {
     loadingModels.value = true
     try {
-      const [modelsRes, lorasRes, activeRes] = await Promise.all([
-        api.getModels(),
-        api.getLoras(),
-        api.getActiveModel(),
-      ])
-      models.value = modelsRes.models
-      loras.value = lorasRes.loras
-      activeModel.value = activeRes.model
-      if (activeRes.model) {
-        // Find full path for the active model (API returns model name without extension, v-select uses path)
-        const activeModelPath = modelsRes.models.find(m =>
-          m.name === activeRes.model ||
-          m.filename === activeRes.model ||
-          m.filename.startsWith(activeRes.model + '.')
-        )?.path
-        selectedModel.value = activeModelPath || activeRes.model
-      }
+      const [modelsRes, lorasRes] = await Promise.all([
+        databaseApi.searchModelsApiDbModelsGet({ type: 'Checkpoint' }),
+        databaseApi.searchModelsApiDbModelsGet({ type: 'LORA' }),
+      ]) as any[]
+      models.value = modelsRes.items || []
+      loras.value = lorasRes.items || []
     } catch (error) {
       console.error('Failed to load models:', error)
     } finally {
@@ -112,7 +118,7 @@ export const useAppStore = defineStore('app', () => {
   // Downloads - actions
   async function pollDownloads() {
     try {
-      const res = await api.getActiveDownloads()
+      const res = await downloadApi.listActiveDownloadsApiDownloadActiveGet() as any
       downloads.value = res.downloads || []
     } catch (e) {
       console.error('Failed to poll downloads:', e)
@@ -134,7 +140,9 @@ export const useAppStore = defineStore('app', () => {
 
   async function startDownload(versionId: number): Promise<string | null> {
     try {
-      const response = await api.downloadModel(undefined, versionId)
+      const response = await downloadApi.startDownloadApiDownloadPost({
+        downloadRequest: { versionId },
+      }) as any
       startDownloadPolling()
       showDownloadsPanel.value = true
       return response.download_id
@@ -155,27 +163,8 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function switchModel(modelPath: string) {
-    if (modelPath === activeModel.value) return
-
-    switchingModel.value = true
-    switchMessage.value = 'Switching model...'
-    switchError.value = null
-
-    try {
-      const result = await api.switchModel(modelPath)
-      // ComfyUI loads models on-demand, no restart needed
-      activeModel.value = result.new_model
-      selectedModel.value = modelPath
-      switchMessage.value = 'Model selected'
-      setTimeout(() => { switchMessage.value = null }, 2000)
-    } catch (error: any) {
-      console.error('Failed to switch model:', error)
-      switchError.value = error.message || 'Failed to switch model'
-      setTimeout(() => { switchError.value = null }, 5000)
-      throw error
-    } finally {
-      switchingModel.value = false
-    }
+    // Just update the selected model - no API call needed
+    selectedModel.value = modelPath
   }
 
   return {

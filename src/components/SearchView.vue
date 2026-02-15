@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import * as api from '@/api/client'
+import { searchApi } from '@/api/client'
 import type { CivitaiModel } from '@/types'
 import ModelCard from './ModelCard.vue'
 
@@ -9,7 +9,7 @@ const STORAGE_KEY = 'civitai-search-state'
 const query = ref('')
 const modelType = ref('')
 const baseModel = ref('')
-const sortOrder = ref('Most Downloaded')
+const sortOrder = ref('downloads')
 const loading = ref(false)
 const results = ref<CivitaiModel[]>([])
 const searched = ref(false)
@@ -23,7 +23,7 @@ onMounted(() => {
       query.value = state.query || ''
       modelType.value = state.modelType || ''
       baseModel.value = state.baseModel || ''
-      sortOrder.value = state.sortOrder || 'Most Downloaded'
+      sortOrder.value = state.sortOrder || 'downloads'
       results.value = state.results || []
       searched.value = state.searched || false
     } catch (e) {
@@ -63,23 +63,24 @@ const baseModels = [
 ]
 
 const sortOptions = [
-  { title: 'Most Downloaded', value: 'Most Downloaded' },
-  { title: 'Highest Rated', value: 'Highest Rated' },
-  { title: 'Newest', value: 'Newest' },
+  { title: 'Most Downloaded', value: 'downloads' },
+  { title: 'Highest Rated', value: 'rating' },
+  { title: 'Newest', value: 'newest' },
 ]
 
 async function search() {
   loading.value = true
   searched.value = true
   try {
-    const data = await api.searchCivitai({
+    const data = await searchApi.searchModelsApiSearchGet({
       query: query.value || undefined,
       types: modelType.value || undefined,
       baseModels: baseModel.value || undefined,
-      sort: sortOrder.value,
+      sort: sortOrder.value as any,
       limit: 24,
-    })
-    results.value = data.items || []
+    }) as any
+    // Response structure: { civitai: { items: [...] }, huggingface: [...] }
+    results.value = data.civitai?.items || data.items || []
   } catch (e: any) {
     console.error('Search failed:', e)
     results.value = []
