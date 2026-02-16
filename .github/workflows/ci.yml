@@ -21,8 +21,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npx vue-tsc -b --noEmit
-
-      - name: Build
+      - name: Build (includes typecheck)
         run: npm run build
