@@ -339,6 +339,18 @@ export default {
       return new Response(null, { headers: getCorsHeaders(request) })
     }
 
+    // Verify session for API routes (require authentication)
+    if (path.startsWith('/api/')) {
+      const token = getCookie(request, 'tensors_session')
+      const username = await verifySessionToken(token, env.SESSION_SECRET)
+      if (!username) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...getCorsHeaders(request) },
+        })
+      }
+    }
+
     // Proxy to upstream API
     const upstream = new URL(url.pathname + url.search, UPSTREAM)
 

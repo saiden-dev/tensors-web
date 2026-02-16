@@ -12,6 +12,7 @@ export interface Model {
   civitai_model_id?: number
   civitai_version_id?: number
   thumbnail_url?: string
+  thumbnail_is_video?: boolean
   triggers?: string[]
 }
 
@@ -29,6 +30,7 @@ export interface LoRA {
   civitai_model_id?: number
   civitai_version_id?: number
   thumbnail_url?: string
+  thumbnail_is_video?: boolean
   triggers?: string[]
 }
 

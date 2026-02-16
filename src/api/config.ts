@@ -19,6 +19,7 @@ const DEFAULT_API = 'https://gw.saiden.dev'
 const config = new Configuration({
   basePath: import.meta.env.VITE_API_URL || DEFAULT_API,
   apiKey: import.meta.env.VITE_API_KEY || undefined,
+  credentials: 'include', // Send cookies for cross-origin requests
 })
 
 // Export configured API instances

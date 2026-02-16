@@ -34,16 +34,18 @@ const modelItems = computed(() =>
     title: m.display_name || m.name,
     value: m.path,
     thumbnail: m.thumbnail_url,
+    thumbnail_is_video: m.thumbnail_is_video,
     base_model: m.base_model,
   }))
 )
 
 const loraItems = computed(() => [
-  { title: 'None', value: '', thumbnail: null, triggers: [] },
+  { title: 'None', value: '', thumbnail: null, thumbnail_is_video: false, triggers: [] },
   ...store.filteredLoras.map(l => ({
     title: l.display_name || l.name,
     value: l.path,
     thumbnail: l.thumbnail_url,
+    thumbnail_is_video: l.thumbnail_is_video,
     triggers: l.triggers || [],
   }))
 ])
@@ -192,9 +194,10 @@ async function generate() {
           >
             <template #selection="{ item }">
               <div class="d-flex align-center ga-2">
-                <v-avatar v-if="item.raw.thumbnail" size="24" rounded="sm">
-                  <v-img :src="item.raw.thumbnail" cover />
-                </v-avatar>
+                <div v-if="item.raw.thumbnail" class="thumb-container thumb-sm">
+                  <video v-if="item.raw.thumbnail_is_video" :src="item.raw.thumbnail" muted loop autoplay playsinline />
+                  <img v-else :src="item.raw.thumbnail" />
+                </div>
                 <v-icon v-else size="24" color="grey">mdi-cube-outline</v-icon>
                 <span class="text-truncate">{{ item.title }}</span>
               </div>
@@ -202,9 +205,10 @@ async function generate() {
             <template #item="{ item, props }">
               <v-list-item v-bind="props" :title="undefined">
                 <template #prepend>
-                  <v-avatar v-if="item.raw.thumbnail" size="32" rounded="sm" class="mr-3">
-                    <v-img :src="item.raw.thumbnail" cover />
-                  </v-avatar>
+                  <div v-if="item.raw.thumbnail" class="thumb-container thumb-md mr-3">
+                    <video v-if="item.raw.thumbnail_is_video" :src="item.raw.thumbnail" muted loop autoplay playsinline />
+                    <img v-else :src="item.raw.thumbnail" />
+                  </div>
                   <v-icon v-else size="32" color="grey" class="mr-3">mdi-cube-outline</v-icon>
                 </template>
                 <v-list-item-title>{{ item.title }}</v-list-item-title>
@@ -228,9 +232,10 @@ async function generate() {
           >
             <template #selection="{ item }">
               <div class="d-flex align-center ga-2">
-                <v-avatar v-if="item.raw.thumbnail" size="24" rounded="sm">
-                  <v-img :src="item.raw.thumbnail" cover />
-                </v-avatar>
+                <div v-if="item.raw.thumbnail" class="thumb-container thumb-sm">
+                  <video v-if="item.raw.thumbnail_is_video" :src="item.raw.thumbnail" muted loop autoplay playsinline />
+                  <img v-else :src="item.raw.thumbnail" />
+                </div>
                 <v-icon v-else size="24" color="grey">mdi-shimmer</v-icon>
                 <span class="text-truncate">{{ item.title }}</span>
               </div>
@@ -238,9 +243,10 @@ async function generate() {
             <template #item="{ item, props }">
               <v-list-item v-bind="props" :title="undefined">
                 <template #prepend>
-                  <v-avatar v-if="item.raw.thumbnail" size="32" rounded="sm" class="mr-3">
-                    <v-img :src="item.raw.thumbnail" cover />
-                  </v-avatar>
+                  <div v-if="item.raw.thumbnail" class="thumb-container thumb-md mr-3">
+                    <video v-if="item.raw.thumbnail_is_video" :src="item.raw.thumbnail" muted loop autoplay playsinline />
+                    <img v-else :src="item.raw.thumbnail" />
+                  </div>
                   <v-icon v-else size="32" color="grey" class="mr-3">mdi-shimmer</v-icon>
                 </template>
                 <v-list-item-title>{{ item.title }}</v-list-item-title>
@@ -365,5 +371,26 @@ async function generate() {
   min-width: 100px !important;
   max-width: 100px !important;
   justify-content: center;
+}
+
+/* Video/image thumbnail containers */
+.thumb-container {
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.thumb-container img,
+.thumb-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.thumb-sm {
+  width: 24px;
+  height: 24px;
+}
+.thumb-md {
+  width: 32px;
+  height: 32px;
 }
 </style>

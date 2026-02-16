@@ -108,12 +108,17 @@ export const useAppStore = defineStore('app', () => {
 
       try {
         const modelInfo = await civitaiApi.getModelApiCivitaiModelModelIdGet({ modelId }) as any
-        const imageUrl = modelInfo?.modelVersions?.[0]?.images?.[0]?.url
-        if (imageUrl) {
+        const images = modelInfo?.modelVersions?.[0]?.images || []
+        // Prefer images over videos for dropdown thumbnails (videos don't autoplay)
+        const firstImage = images.find((img: any) => img.type !== 'video')
+        const firstVideo = images.find((img: any) => img.type === 'video')
+        const media = firstImage || firstVideo
+        if (media?.url) {
+          const isVideo = media.type === 'video'
           // Use smaller width for thumbnails
-          const thumbnailUrl = imageUrl.replace('/original=true/', '/width=128/')
+          const thumbnailUrl = media.url.replace('/original=true/', '/width=128/')
           thumbnailCache.set(modelId, thumbnailUrl)
-          updateThumbnail(modelId, thumbnailUrl)
+          updateThumbnail(modelId, thumbnailUrl, isVideo)
         }
       } catch (e) {
         console.warn(`Failed to fetch thumbnail for model ${modelId}:`, e)
@@ -122,12 +127,12 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Update thumbnail URL for all models/loras with given civitai_model_id
-  function updateThumbnail(modelId: number, url: string) {
+  function updateThumbnail(modelId: number, url: string, isVideo = false) {
     models.value = models.value.map(m =>
-      m.civitai_model_id === modelId ? { ...m, thumbnail_url: url } : m
+      m.civitai_model_id === modelId ? { ...m, thumbnail_url: url, thumbnail_is_video: isVideo } : m
     )
     loras.value = loras.value.map(l =>
-      l.civitai_model_id === modelId ? { ...l, thumbnail_url: url } : l
+      l.civitai_model_id === modelId ? { ...l, thumbnail_url: url, thumbnail_is_video: isVideo } : l
     )
   }
 
@@ -184,6 +189,7 @@ export const useAppStore = defineStore('app', () => {
         civitai_model_id: f.civitai_model_id,
         civitai_version_id: f.civitai_version_id,
         thumbnail_url: undefined, // Will be loaded async
+        thumbnail_is_video: false,
       }))
 
       loras.value = dedupedLoras.map((f: any) => ({
@@ -198,6 +204,7 @@ export const useAppStore = defineStore('app', () => {
         civitai_model_id: f.civitai_model_id,
         civitai_version_id: f.civitai_version_id,
         thumbnail_url: undefined, // Will be loaded async
+        thumbnail_is_video: false,
       }))
 
       // Fetch thumbnails async (don't block UI)
