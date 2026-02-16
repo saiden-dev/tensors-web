@@ -9,12 +9,12 @@ import {
   BASE_PATH,
 } from '@saiden/tensors'
 
-// Production: use proxy (handles CORS + adds API key server-side)
+// Production: use gateway (handles CORS + adds API key server-side)
 // Development: set VITE_API_URL in .env to use direct API
 //
 // VITE_API_URL takes precedence if set (for local dev with direct API)
-// Otherwise defaults to proxy (for production deployment)
-const DEFAULT_API = 'https://tensors-proxy.saiden.dev'
+// Otherwise defaults to gateway (for production deployment)
+const DEFAULT_API = 'https://gw.saiden.dev'
 
 const config = new Configuration({
   basePath: import.meta.env.VITE_API_URL || DEFAULT_API,

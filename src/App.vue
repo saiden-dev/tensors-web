@@ -18,6 +18,12 @@ onMounted(async () => {
   // Initialize auth first
   await auth.init()
 
+  // If not authenticated, redirect to login immediately
+  if (!auth.isAuthenticated && !auth.loading) {
+    auth.redirectToLogin()
+    return
+  }
+
   // If authenticated, load app data
   if (auth.isAuthenticated) {
     store.loadModels()

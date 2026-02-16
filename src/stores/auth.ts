@@ -1,16 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-// Auth API uses the direct API URL (not proxy) since auth routes don't need API key
-const AUTH_API = 'https://tensors-api.saiden.dev'
+// Auth + API gateway (Cloudflare Worker)
+// Cookie is set on .saiden.dev domain (HttpOnly, shared with tensors-api)
+const AUTH_API = 'https://gw.saiden.dev'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(null)
   const username = ref<string | null>(null)
   const loading = ref(true)
   const error = ref<string | null>(null)
 
-  const isAuthenticated = computed(() => !!token.value && !!username.value)
+  const isAuthenticated = computed(() => !!username.value)
 
   // Get the login URL for redirecting to OAuth
   function getLoginUrl(): string {
@@ -18,79 +18,35 @@ export const useAuthStore = defineStore('auth', () => {
     return `${AUTH_API}/auth/login?return_url=${encodeURIComponent(returnUrl)}`
   }
 
-  // Check for token in URL (OAuth callback) or localStorage
+  // Check session via cookie (HttpOnly cookie sent automatically)
   async function init() {
     loading.value = true
     error.value = null
 
     try {
-      // Check URL for token (OAuth callback)
-      const params = new URLSearchParams(window.location.search)
-      const urlToken = params.get('token')
+      // Call verify endpoint - browser sends cookie automatically
+      const response = await fetch(`${AUTH_API}/auth/verify`, {
+        credentials: 'include', // Send cookies cross-origin
+      })
+      const data = await response.json()
 
-      if (urlToken) {
-        // Remove token from URL (clean up)
-        const url = new URL(window.location.href)
-        url.searchParams.delete('token')
-        window.history.replaceState({}, '', url.toString())
-
-        // Verify and store
-        const verified = await verifyToken(urlToken)
-        if (verified) {
-          token.value = urlToken
-          localStorage.setItem('tensors_token', urlToken)
-          return
-        }
+      if (data.valid && data.username) {
+        username.value = data.username
+      } else {
+        username.value = null
       }
-
-      // Check localStorage for existing token
-      const storedToken = localStorage.getItem('tensors_token')
-      if (storedToken) {
-        const verified = await verifyToken(storedToken)
-        if (verified) {
-          token.value = storedToken
-          return
-        }
-        // Invalid token, clear it
-        localStorage.removeItem('tensors_token')
-      }
-
-      // Not authenticated
-      token.value = null
-      username.value = null
     } catch (e: any) {
       console.error('Auth init error:', e)
       error.value = e.message || 'Authentication error'
-      token.value = null
       username.value = null
     } finally {
       loading.value = false
     }
   }
 
-  // Verify token with API
-  async function verifyToken(checkToken: string): Promise<boolean> {
-    try {
-      const response = await fetch(`${AUTH_API}/auth/verify?token=${encodeURIComponent(checkToken)}`)
-      const data = await response.json()
-
-      if (data.valid && data.username) {
-        username.value = data.username
-        return true
-      }
-      return false
-    } catch (e) {
-      console.error('Token verification failed:', e)
-      return false
-    }
-  }
-
-  // Logout
+  // Logout - redirect to clear cookie
   function logout() {
-    token.value = null
     username.value = null
-    localStorage.removeItem('tensors_token')
-    // Redirect to logout endpoint to clear any server-side session
     window.location.href = `${AUTH_API}/auth/logout?return_url=${encodeURIComponent(window.location.origin)}`
   }
 
@@ -100,7 +56,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    token,
     username,
     loading,
     error,
