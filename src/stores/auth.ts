@@ -5,6 +5,9 @@ import { ref, computed } from 'vue'
 // Cookie is set on .saiden.dev domain (HttpOnly, shared with tensors-api)
 const AUTH_API = 'https://gw.saiden.dev'
 
+// Localhost dev bypass
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
 export const useAuthStore = defineStore('auth', () => {
   const username = ref<string | null>(null)
   const loading = ref(true)
@@ -22,6 +25,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function init() {
     loading.value = true
     error.value = null
+
+    // Bypass auth for localhost development
+    if (isLocalhost) {
+      console.log('[Auth] Localhost detected, bypassing authentication')
+      username.value = 'dev'
+      loading.value = false
+      return
+    }
 
     try {
       // Call verify endpoint - browser sends cookie automatically
@@ -47,6 +58,10 @@ export const useAuthStore = defineStore('auth', () => {
   // Logout - redirect to clear cookie
   function logout() {
     username.value = null
+    if (isLocalhost) {
+      window.location.reload()
+      return
+    }
     window.location.href = `${AUTH_API}/auth/logout?return_url=${encodeURIComponent(window.location.origin)}`
   }
 

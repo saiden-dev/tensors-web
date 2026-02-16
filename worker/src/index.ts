@@ -13,10 +13,13 @@ const COOKIE_DOMAIN = '.saiden.dev'
 // CORS headers - must use specific origin for credentials
 function getCorsHeaders(request: Request) {
   const origin = request.headers.get('Origin') || 'https://tensors.saiden.dev'
-  // Only allow saiden.dev origins
-  const allowedOrigin = origin.endsWith('.saiden.dev') || origin === 'https://saiden.dev'
-    ? origin
-    : 'https://tensors.saiden.dev'
+  // Allow saiden.dev origins and localhost for development
+  const isAllowed = origin.endsWith('.saiden.dev')
+    || origin === 'https://saiden.dev'
+    || origin.startsWith('http://localhost:')
+    || origin.startsWith('http://127.0.0.1:')
+
+  const allowedOrigin = isAllowed ? origin : 'https://tensors.saiden.dev'
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,

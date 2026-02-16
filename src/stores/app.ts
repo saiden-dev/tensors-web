@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Model, LoRA, ResolutionPreset } from '@/types'
-import { databaseApi, downloadApi } from '@/api/client'
+import { databaseApi, downloadApi, civitaiApi } from '@/api/client'
 
 interface DownloadStatus {
   id: string
@@ -93,16 +93,115 @@ export const useAppStore = defineStore('app', () => {
   const switchError = ref<string | null>(null)
 
   // Actions
+  // Cache for thumbnail URLs fetched from CivitAI
+  const thumbnailCache = new Map<number, string>()
+
+  // Fetch thumbnails from CivitAI API (async, updates models in place)
+  async function loadThumbnails(files: any[]) {
+    const modelIds = [...new Set(files.map(f => f.civitai_model_id).filter(Boolean))]
+
+    for (const modelId of modelIds) {
+      if (thumbnailCache.has(modelId)) {
+        updateThumbnail(modelId, thumbnailCache.get(modelId)!)
+        continue
+      }
+
+      try {
+        const modelInfo = await civitaiApi.getModelApiCivitaiModelModelIdGet({ modelId }) as any
+        const imageUrl = modelInfo?.modelVersions?.[0]?.images?.[0]?.url
+        if (imageUrl) {
+          // Use smaller width for thumbnails
+          const thumbnailUrl = imageUrl.replace('/original=true/', '/width=128/')
+          thumbnailCache.set(modelId, thumbnailUrl)
+          updateThumbnail(modelId, thumbnailUrl)
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch thumbnail for model ${modelId}:`, e)
+      }
+    }
+  }
+
+  // Update thumbnail URL for all models/loras with given civitai_model_id
+  function updateThumbnail(modelId: number, url: string) {
+    models.value = models.value.map(m =>
+      m.civitai_model_id === modelId ? { ...m, thumbnail_url: url } : m
+    )
+    loras.value = loras.value.map(l =>
+      l.civitai_model_id === modelId ? { ...l, thumbnail_url: url } : l
+    )
+  }
+
+  // Helper to format display name
+  function formatDisplayName(f: any): string {
+    if (f.model_name && f.version_name) {
+      return `${f.model_name} (${f.version_name})`
+    }
+    if (f.model_name) return f.model_name
+    if (f.version_name) return f.version_name
+    return f.file_path.split('/').pop()?.replace('.safetensors', '') || 'Unknown'
+  }
+
   async function loadModels() {
     loadingModels.value = true
     try {
-      const [modelsRes, lorasRes] = await Promise.all([
-        databaseApi.searchModelsApiDbModelsGet({ type: 'Checkpoint' }),
-        databaseApi.searchModelsApiDbModelsGet({ type: 'LORA' }),
-      ]) as any[]
-      // API returns array directly, not { items: [...] }
-      models.value = Array.isArray(modelsRes) ? modelsRes : (modelsRes.items || [])
-      loras.value = Array.isArray(lorasRes) ? lorasRes : (lorasRes.items || [])
+      // Fetch local files from the database
+      const files = await databaseApi.listFilesApiDbFilesGet() as any[]
+
+      // Separate checkpoints and LoRAs by path
+      const checkpointFiles = files.filter((f: any) =>
+        f.file_path?.includes('/checkpoints/') || f.file_path?.includes('\\checkpoints\\')
+      )
+      const loraFiles = files.filter((f: any) =>
+        f.file_path?.includes('/loras/') || f.file_path?.includes('\\loras\\')
+      )
+
+      // Dedupe by sha256 (prefer files with metadata)
+      const dedupeByHash = (files: any[]) => {
+        const byHash = new Map<string, any>()
+        for (const f of files) {
+          const existing = byHash.get(f.sha256)
+          // Keep the one with more metadata, or first seen
+          if (!existing || (f.model_name && !existing.model_name)) {
+            byHash.set(f.sha256, f)
+          }
+        }
+        return Array.from(byHash.values())
+      }
+
+      // Map to the Model/LoRA format expected by the UI
+      const dedupedCheckpoints = dedupeByHash(checkpointFiles)
+      const dedupedLoras = dedupeByHash(loraFiles)
+
+      models.value = dedupedCheckpoints.map((f: any) => ({
+        name: f.model_name || f.file_path.split('/').pop()?.replace('.safetensors', '') || 'Unknown',
+        path: f.file_path,
+        filename: f.file_path.split('/').pop() || '',
+        size_mb: 0,
+        modified: 0,
+        category: f.base_model?.includes('XL') || f.base_model?.includes('Pony') ? 'large' : 'sd15',
+        display_name: formatDisplayName(f),
+        base_model: f.base_model,
+        civitai_model_id: f.civitai_model_id,
+        civitai_version_id: f.civitai_version_id,
+        thumbnail_url: undefined, // Will be loaded async
+      }))
+
+      loras.value = dedupedLoras.map((f: any) => ({
+        name: f.model_name || f.file_path.split('/').pop()?.replace('.safetensors', '') || 'Unknown',
+        path: f.file_path,
+        filename: f.file_path.split('/').pop() || '',
+        size_mb: 0,
+        modified: 0,
+        category: f.base_model?.includes('XL') || f.base_model?.includes('Pony') ? 'large' : 'sd15',
+        display_name: formatDisplayName(f),
+        base_model: f.base_model,
+        civitai_model_id: f.civitai_model_id,
+        civitai_version_id: f.civitai_version_id,
+        thumbnail_url: undefined, // Will be loaded async
+      }))
+
+      // Fetch thumbnails async (don't block UI)
+      loadThumbnails([...dedupedCheckpoints, ...dedupedLoras])
     } catch (error) {
       console.error('Failed to load models:', error)
     } finally {
