@@ -1,6 +1,7 @@
 import {
   Configuration,
   CivitAIApi,
+  ComfyUIAPIApi,
   DatabaseApi,
   DefaultApi,
   DownloadApi,
@@ -24,6 +25,7 @@ const config = new Configuration({
 
 // Export configured API instances
 export const civitaiApi = new CivitAIApi(config)
+export const comfyuiApi = new ComfyUIAPIApi(config)
 export const databaseApi = new DatabaseApi(config)
 export const defaultApi = new DefaultApi(config)
 export const downloadApi = new DownloadApi(config)

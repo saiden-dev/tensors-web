@@ -4,6 +4,7 @@
 
 import {
   civitaiApi,
+  comfyuiApi,
   databaseApi,
   downloadApi,
   galleryApi,
@@ -12,7 +13,7 @@ import {
 } from './config'
 
 // Re-export API instances
-export { civitaiApi, databaseApi, downloadApi, galleryApi, searchApi }
+export { civitaiApi, comfyuiApi, databaseApi, downloadApi, galleryApi, searchApi }
 
 // Image URL helper
 export function getImageUrl(id: string): string {

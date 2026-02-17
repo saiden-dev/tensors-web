@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { getImageUrl } from '@/api/client'
+import { comfyuiApi } from '@/api/client'
+import { config } from '@/api/config'
 import type { GeneratedImage } from '@/types'
 
 const store = useAppStore()
@@ -74,15 +75,19 @@ async function generate() {
   generating.value = true
 
   // Build final prompt with quality tags
-  const _finalPrompt = `${store.defaultQualityTags}, ${currentPrompt}`
+  const finalPrompt = `${store.defaultQualityTags}, ${currentPrompt}`
+
+  // Get selected model filename (ComfyUI expects just filename, not full path)
+  const selectedModelObj = store.models.find(m => m.path === store.selectedModel)
+  const modelFilename = selectedModelObj?.filename || null
 
   // Get LoRA config if selected
   const selectedLoraModel = store.selectedLora ? store.loras.find(l => l.path === store.selectedLora) : null
-  const _loraConfig = selectedLoraModel ? { path: selectedLoraModel.filename, multiplier: store.loraWeight } : undefined
+  // TODO: LoRA support requires custom workflow - for now just note it in params
+  void selectedLoraModel
 
   const { width, height } = store.resolution
   const paramsStr = `${width}×${height}, ${store.steps} steps${store.batchSize > 1 ? `, batch ${store.batchSize}` : ''}${selectedLoraModel ? `, +${selectedLoraModel.name}` : ''}`
-  void _finalPrompt; void _loraConfig // TODO: Use when generate endpoint is available
 
   const message = reactive<ChatMessage>({
     prompt: currentPrompt,
@@ -93,8 +98,45 @@ async function generate() {
   messages.value.push(message)
 
   try {
-    // TODO: Generate endpoint not in OpenAPI spec yet
-    message.error = 'Generate not implemented in API client'
+    // Generate images (one at a time for batch, since API doesn't support batch_size yet)
+    const generatePromises = Array(store.batchSize).fill(null).map(async () => {
+      const response = await comfyuiApi.comfyuiGenerateApiComfyuiGeneratePost({
+        generateRequest: {
+          prompt: finalPrompt,
+          negativePrompt: store.defaultNegativePrompt,
+          model: modelFilename,
+          width,
+          height,
+          steps: store.steps,
+          cfg: 7.0,
+          seed: -1,  // Random seed
+          sampler: 'euler',
+          scheduler: 'normal',
+        }
+      })
+
+      if (response.success && response.images && response.images.length > 0) {
+        // Add images to message as they complete
+        for (const filename of response.images) {
+          const imageUrl = `${config.basePath}/api/comfyui/image/${encodeURIComponent(filename)}`
+          const img: GeneratedImage = {
+            id: filename,
+            url: imageUrl,
+            prompt: currentPrompt,
+            created_at: new Date().toISOString(),
+          }
+          message.images.push(img)
+        }
+      } else if (response.errors && Object.keys(response.errors).length > 0) {
+        throw new Error(JSON.stringify(response.errors))
+      }
+    })
+
+    await Promise.all(generatePromises)
+
+    if (message.images.length === 0) {
+      message.error = 'No images generated'
+    }
   } catch (e: any) {
     console.error('Generate error:', e)
     message.error = e.message || 'Generation failed'
@@ -164,7 +206,7 @@ async function generate() {
             class="overflow-hidden"
           >
             <v-img
-              :src="getImageUrl(img.id)"
+              :src="img.url"
               cover
               height="200"
             />

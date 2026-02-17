@@ -36,8 +36,10 @@ export interface LoRA {
 
 export interface GeneratedImage {
   id: string
-  path: string
-  seed: number
+  url: string
+  prompt?: string
+  created_at?: string
+  seed?: number
 }
 
 export interface GalleryImage {
